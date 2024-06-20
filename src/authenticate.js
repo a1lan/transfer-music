@@ -1,6 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import querystring from "querystring";
+import fs from "fs";
 
 dotenv.config();
 
@@ -33,7 +34,13 @@ app.get("/callback", (req, res) => {
   if (code) {
     res.send("Authorisation Complete");
     server.close();
-    getAccessToken(code).then(res => main(res));
+    getAccessToken(code).then((token) => {
+      const config = {
+        accessToken: token,
+      };
+      const configJSON = JSON.stringify(config, null, 2);
+      fs.writeFileSync("config.json", configJSON);
+    });
   } else {
     res.send("Authorisation Failed");
   }
@@ -62,28 +69,4 @@ async function getAccessToken(code) {
     });
 
   return accessToken;
-}
-
-// -------------- POST AUTHORISATION --------------
-
-// Ran once an Access Token is obtained
-async function main(accessToken) {
-  let playlists = getPlaylists(accessToken);
-  console.log(playlists);
-}
-
-async function getPlaylists(accessToken) {
-  let requestParameters = {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  };
-  let playlists = await fetch(
-    "https://api.spotify.com/v1/me/playlists",
-    requestParameters
-  )
-    .then((res) => res.json())
-    .then((data) => console.log(data));
-  return playlists;
 }
