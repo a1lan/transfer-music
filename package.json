@@ -2,12 +2,16 @@
   "name": "transfer-music",
   "version": "1.0.0",
   "description": "Primary aim with this is to help me migrate my Spotify playlists to Youtube Music. Secondary aim is to sync a playlist on one platform with that on another.",
-  "main": "main.js",
+  "main": "test.js",
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
 }
