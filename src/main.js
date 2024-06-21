@@ -1,4 +1,3 @@
-import { fail } from "assert";
 import fs from "fs";
 
 const ACCESS_TOKEN = JSON.parse(fs.readFileSync("config.json")).accessToken;
@@ -10,13 +9,25 @@ for (let i = 0; i < playlists.length; i++) {
   console.log(`  ${i}: ${playlists[i].name}`);
 }
 
-let tracks = await getTracks(playlists, 8);
+let selectedPlaylist = await readString("\nSelect playlist to transfer: ")
+
+let tracks = await getTracks(playlists, selectedPlaylist);
 console.log("\nTracks:");
 for (let i = 0; i < tracks.length; i++) {
-  console.log(`  ${i}: ${tracks[i].track.name}`);
+  console.log(`  ${i}: ${tracks[i].track?.name || "N/a"}`);
 }
 
 // ------------ FUNCTIONS ------------
+
+async function readString(str="") {
+  return new Promise((resolve) => {
+    process.stdout.write(str);
+    process.stdin.on("data", (data) => {
+      process.stdin.pause();  // End stdin listening
+      resolve(data.toString().trim());
+    });
+  });
+}
 
 async function getPlaylists() {
   let requestParameters = {

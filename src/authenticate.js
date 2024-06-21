@@ -40,6 +40,7 @@ app.get("/callback", (req, res) => {
       };
       const configJSON = JSON.stringify(config, null, 2);
       fs.writeFileSync("config.json", configJSON);
+      console.log("Token exchanged");
     });
   } else {
     res.send("Authorisation Failed");
