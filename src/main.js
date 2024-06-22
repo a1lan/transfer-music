@@ -1,17 +1,20 @@
 import fs from "fs";
+import SpotifyWebApi from "spotify-web-api-node";
 
-const ACCESS_TOKEN = JSON.parse(fs.readFileSync("config.json")).accessToken;
+const spotifyApi = new SpotifyWebApi(
+  JSON.parse(fs.readFileSync("config.json")).spotify_creds
+);
 
-let playlists = await getPlaylists();
+let spotifyPlaylists = await getSpotifyPlaylists();
 
-console.log("My Playlists:");
-for (let i = 0; i < playlists.length; i++) {
-  console.log(`  ${i}: ${playlists[i].name}`);
+console.log("My Spotify Playlists:");
+for (let i = 0; i < spotifyPlaylists.length; i++) {
+  console.log(`  ${i}: ${spotifyPlaylists[i].name}`);
 }
 
 let selectedPlaylist = await readString("\nSelect playlist to transfer: ");
 
-let tracks = await getTracks(playlists, selectedPlaylist);
+let tracks = await getTracks(spotifyPlaylists, selectedPlaylist);
 console.log("\nTracks:");
 for (let i = 0; i < tracks.length; i++) {
   console.log(`  ${i}: ${tracks[i].track?.name || "N/a"}`);
@@ -29,40 +32,27 @@ async function readString(str = "") {
   });
 }
 
-async function getPlaylists() {
-  let requestParameters = {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${ACCESS_TOKEN}`,
-    },
-  };
-  let playlists = await fetch(
-    "https://api.spotify.com/v1/me/playlists",
-    requestParameters
-  ).then((res) => res.json());
-  return playlists.items;
+async function getSpotifyPlaylists() {
+  return await spotifyApi.getUserPlaylists().then((data) => data.body.items);
 }
 
-async function getTracks(playlists, index) {
-  let uri = playlists[index].tracks.href;
-  let total = playlists[index].tracks.total;
+async function getTracks(spotifyPlaylists, index) {
+  const PLAYLIST_ID = spotifyPlaylists[index].id;
+  const TOTAL = spotifyPlaylists[index].tracks.total;
   const LIMIT = 100;
-  uri += `?limit=${LIMIT}`;
-  let requestParameters = {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${ACCESS_TOKEN}`,
-    },
-  };
   let tracks = [];
-  for (let i = 0; i < Math.ceil(total / LIMIT); i++) {
+
+  for (let i = 0; i < Math.ceil(TOTAL / LIMIT); i++) {
+    const options = {
+      offset: i * LIMIT,
+      limit: LIMIT,
+    };
     tracks.push(
-      ...(
-        await fetch(`${uri}&offset=${i * LIMIT}`, requestParameters).then(
-          (res) => res.json()
-        )
-      ).items
+      ...(await spotifyApi
+        .getPlaylistTracks(PLAYLIST_ID, options)
+        .then((data) => data.body.items))
     );
   }
+
   return tracks;
 }
