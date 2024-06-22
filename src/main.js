@@ -9,7 +9,7 @@ for (let i = 0; i < playlists.length; i++) {
   console.log(`  ${i}: ${playlists[i].name}`);
 }
 
-let selectedPlaylist = await readString("\nSelect playlist to transfer: ")
+let selectedPlaylist = await readString("\nSelect playlist to transfer: ");
 
 let tracks = await getTracks(playlists, selectedPlaylist);
 console.log("\nTracks:");
@@ -19,11 +19,11 @@ for (let i = 0; i < tracks.length; i++) {
 
 // ------------ FUNCTIONS ------------
 
-async function readString(str="") {
+async function readString(str = "") {
   return new Promise((resolve) => {
     process.stdout.write(str);
     process.stdin.on("data", (data) => {
-      process.stdin.pause();  // End stdin listening
+      process.stdin.pause(); // End stdin listening
       resolve(data.toString().trim());
     });
   });
@@ -45,13 +45,24 @@ async function getPlaylists() {
 
 async function getTracks(playlists, index) {
   let uri = playlists[index].tracks.href;
-  uri += "?limit=100";
+  let total = playlists[index].tracks.total;
+  const LIMIT = 100;
+  uri += `?limit=${LIMIT}`;
   let requestParameters = {
     method: "GET",
     headers: {
       Authorization: `Bearer ${ACCESS_TOKEN}`,
     },
   };
-  let tracks = await fetch(uri, requestParameters).then((res) => res.json());
-  return tracks.items;
+  let tracks = [];
+  for (let i = 0; i < Math.ceil(total / LIMIT); i++) {
+    tracks.push(
+      ...(
+        await fetch(`${uri}&offset=${i * LIMIT}`, requestParameters).then(
+          (res) => res.json()
+        )
+      ).items
+    );
+  }
+  return tracks;
 }
