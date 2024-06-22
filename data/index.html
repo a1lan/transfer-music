@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transfer Music</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <section class="authentication">
+            <h2>Authentication</h2>
+            <div class="button-container">
+                <a id="spotify-button" class="button spotify-button loading" href="/spotify">Request Spotify Access Tokens</a>
+                <a id="youtube-button" class="button youtube-button loading" href="/youtube">Request YouTube Music Access Tokens</a>
+            </div>
+        </section>
+        <footer>
+            <p>Created by Allan. View the complete source code on <a href="https://github.com/a1lan/transfer-music">GitHub</a>.</p>
+        </footer>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            fetch('/api/token-status')
+                .then(response => response.json())
+                .then(data => {
+                    const spotifyButton = document.getElementById('spotify-button');
+                    const youtubeButton = document.getElementById('youtube-button');
+
+                    if (data.authedSet.includes("spotify")) {
+                        spotifyButton.classList.add('disabled');
+                        spotifyButton.textContent = 'Spotify Token Received';
+                        spotifyButton.href = '#';
+                    } else {
+                        spotifyButton.classList.remove('loading');
+                    }
+
+                    if (data.authedSet.includes("google")) {
+                        youtubeButton.classList.add('disabled');
+                        youtubeButton.textContent = 'YouTube Token Received';
+                        youtubeButton.href = '#';
+                    } else {
+                        youtubeButton.classList.remove('loading');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching token status:', error);
+                    document.querySelectorAll('.button').forEach(button => {
+                        button.classList.remove('loading');
+                    });
+                });
+        });
+    </script>
+</body>
+</html>

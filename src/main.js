@@ -14,7 +14,7 @@ for (let i = 0; i < spotifyPlaylists.length; i++) {
 
 let selectedPlaylist = await readString("\nSelect playlist to transfer: ");
 
-let tracks = await getTracks(spotifyPlaylists, selectedPlaylist);
+let tracks = await getSpotifyTracks(spotifyPlaylists, selectedPlaylist);
 console.log("\nTracks:");
 for (let i = 0; i < tracks.length; i++) {
   console.log(`  ${i}: ${tracks[i].track?.name || "N/a"}`);
@@ -36,7 +36,7 @@ async function getSpotifyPlaylists() {
   return await spotifyApi.getUserPlaylists().then((data) => data.body.items);
 }
 
-async function getTracks(spotifyPlaylists, index) {
+async function getSpotifyTracks(spotifyPlaylists, index) {
   const PLAYLIST_ID = spotifyPlaylists[index].id;
   const TOTAL = spotifyPlaylists[index].tracks.total;
   const LIMIT = 100;

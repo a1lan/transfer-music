@@ -5,3 +5,4 @@ google_credentials.json
 
 # Non project specific
 .vscode
+test.js
