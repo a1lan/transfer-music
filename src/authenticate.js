@@ -2,6 +2,7 @@ import { configDotenv } from "dotenv";
 import express from "express";
 import fs from "fs";
 import SpotifyWebApi from "spotify-web-api-node";
+import { OAuth2Client } from "google-auth-library";
 
 configDotenv();
 const app = express();
@@ -17,6 +18,12 @@ const spotifyApi = new SpotifyWebApi({
   redirectUri: process.env.SPOTIFY_REDIRECT_URI,
 });
 
+const oauth2Client = new OAuth2Client(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI
+);
+
 app.use(express.static("../data"));
 
 // Redirect the user to the Spotify authorisation page
@@ -26,8 +33,32 @@ app.get("/spotify", (req, res) => {
   res.redirect(spotifyAuthURL);
 });
 
+// Redirect the user to the Google authorisation page for Youtube
 app.get("/youtube", (req, res) => {
-  tokenReceived("google", res);
+  const scope = [
+    "https://www.googleapis.com/auth/youtube",
+    "https://www.googleapis.com/auth/youtube.readonly",
+  ];
+  const googleAuthURL = oauth2Client.generateAuthUrl({
+    access_type: "offline",
+    scope: scope,
+  });
+  res.redirect(googleAuthURL);
+});
+
+// Handle the auth redirect from Google
+app.get("/googleauth", (req, res) => {
+  const code = req.query.code || null;
+  oauth2Client
+    .getToken(code)
+    .then((data) => {
+      oauth2Client.setCredentials(data.tokens);
+      config["google_creds"] = oauth2Client.credentials;
+      tokenReceived("google", res);
+    })
+    .catch((err) => {
+      console.error("Error getting YouTube Tokens:", err);
+    });
 });
 
 // Handle the callback from Spotify
@@ -48,9 +79,9 @@ app.get("/callback", (req, res) => {
     });
 });
 
-app.get('/api/token-status', (req, res) => {
+app.get("/api/token-status", (req, res) => {
   res.json({
-      authedSet: [...authed]
+    authedSet: [...authed],
   });
 });
 

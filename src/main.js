@@ -1,11 +1,25 @@
 import fs from "fs";
 import SpotifyWebApi from "spotify-web-api-node";
+import { google } from "googleapis";
+import { OAuth2Client } from "google-auth-library";
 
-const spotifyApi = new SpotifyWebApi(
-  JSON.parse(fs.readFileSync("config.json")).spotify_creds
+const config = JSON.parse(fs.readFileSync("config.json"));
+
+const spotifyApi = new SpotifyWebApi(config.spotify_creds);
+
+const oauth2Client = new OAuth2Client(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI
 );
+oauth2Client.setCredentials(config.google_creds);
 
-let spotifyPlaylists = await getSpotifyPlaylists();
+const youtubeAPI = google.youtube({
+  version: "v3",
+  auth: oauth2Client,
+});
+
+const spotifyPlaylists = await getSpotifyPlaylists();
 
 console.log("My Spotify Playlists:");
 for (let i = 0; i < spotifyPlaylists.length; i++) {
@@ -30,6 +44,14 @@ async function readString(str = "") {
       resolve(data.toString().trim());
     });
   });
+}
+
+async function getYoutubePlaylists() {
+  let res = await youtubeAPI.playlists.list({
+    part: "snippet",
+    mine: true,
+  });
+  return res.data.items;
 }
 
 async function getSpotifyPlaylists() {
