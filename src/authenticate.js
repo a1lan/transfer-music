@@ -1,73 +1,60 @@
+import { configDotenv } from "dotenv";
 import express from "express";
-import dotenv from "dotenv";
-import querystring from "querystring";
 import fs from "fs";
+import SpotifyWebApi from "spotify-web-api-node";
 
-dotenv.config();
-
+configDotenv();
 const app = express();
-const PORT = 3000;
+const port = 3000;
 
-// Spotify credentials
-const CLIENT_ID = process.env.CLIENT_ID;
-const CLIENT_SECRET = process.env.CLIENT_SECRET;
-const REDIRECT_URI = process.env.REDIRECT_URI;
+const AUTH_REQUIRED = 1;
+let authed = new Set();
+let config = {};
 
-// Route to display the authorization link
-app.get("/", (req, res) => {
-  const authUrl =
-    "https://accounts.spotify.com/authorize?" +
-    querystring.stringify({
-      response_type: "code",
-      client_id: CLIENT_ID,
-      scope: "playlist-read-private",
-      redirect_uri: REDIRECT_URI,
-    });
-
-  res.send(`<a href="${authUrl}">Authorize Spotify</a>`);
+const spotifyApi = new SpotifyWebApi({
+  clientId: process.env.SPOTIFY_CLIENT_ID,
+  clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
+  redirectUri: process.env.SPOTIFY_REDIRECT_URI,
 });
 
-// Callback route to handle the response from Spotify
+// Redirect the user to the Spotify authorisation page
+app.get("/", (req, res) => {
+  const scopes = ["playlist-read-private"];
+  const spotifyAuthURL = spotifyApi.createAuthorizeURL(scopes);
+  res.redirect(spotifyAuthURL);
+});
+
+// Handle the callback from Spotify
 app.get("/callback", (req, res) => {
   const code = req.query.code || null;
 
-  if (code) {
-    res.send("Authorisation Complete");
-    server.close();
-    getAccessToken(code).then((token) => {
-      const config = {
-        accessToken: token,
-      };
-      const configJSON = JSON.stringify(config, null, 2);
-      fs.writeFileSync("config.json", configJSON);
-      console.log("Token exchanged");
-    });
-  } else {
-    res.send("Authorisation Failed");
-  }
-});
-
-let server = app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-});
-
-async function getAccessToken(code) {
-  let authParameters = {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: `grant_type=authorization_code&code=${code}&redirect_uri=${REDIRECT_URI}&client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}`,
-  };
-
-  const accessToken = await fetch(
-    "https://accounts.spotify.com/api/token",
-    authParameters
-  )
-    .then((res) => res.json())
+  spotifyApi
+    .authorizationCodeGrant(code)
     .then((data) => {
-      return data.access_token;
-    });
+      spotifyApi.setAccessToken(data.body["access_token"]);
+      spotifyApi.setRefreshToken(data.body["refresh_token"]);
 
-  return accessToken;
+      config["spotify_creds"] = spotifyApi.getCredentials();
+      tokenReceived("spotify", res);
+    })
+    .catch((err) => {
+      console.error("Error getting Spotify Tokens:", err);
+    });
+});
+
+let server = app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}/`);
+});
+
+function tokenReceived(provider, res) {
+  if (provider === "spotify" || provider === "google") {
+    authed.add(provider);
+  }
+
+  res.send(`Tokens received: ${[...authed].join(", ")}`);
+  if (authed.size === AUTH_REQUIRED) {
+    server.close();
+    const configJSON = JSON.stringify(config, null, 2);
+    fs.writeFileSync("config.json", configJSON);
+  }
 }
