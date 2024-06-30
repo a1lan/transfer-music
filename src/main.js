@@ -21,20 +21,52 @@ const youtubeAPI = google.youtube({
 
 const spotifyPlaylists = await getSpotifyPlaylists();
 
+// Displays list of Spotify Playlists to select from
 console.log("My Spotify Playlists:");
 for (let i = 0; i < spotifyPlaylists.length; i++) {
   console.log(`  ${i}: ${spotifyPlaylists[i].name}`);
 }
 
 let selectedPlaylist = await readString("\nSelect playlist to transfer: ");
-
-let tracks = await getSpotifyTracks(spotifyPlaylists, selectedPlaylist);
-console.log("\nTracks:");
-for (let i = 0; i < tracks.length; i++) {
-  console.log(`  ${i}: ${tracks[i].track?.name || "N/a"}`);
-}
+spotifyToYoutube(selectedPlaylist);
 
 // ------------ FUNCTIONS ------------
+
+async function findTrack(spotifyTrack) {
+  let query = spotifyTrack.name
+  const artists = spotifyTrack.artists
+  artists.forEach((artist) => {
+    query += ` ${artist.name}`
+  })
+  const youtubeTracks = await searchYoutube(query);
+  return youtubeTracks[0];
+}
+
+async function searchYoutube(query) {
+  const response = await youtubeAPI.search.list({
+    part: "snippet",
+    q: query,
+    type: "video",
+    videoCategoryId: "10", // Category ID for Music
+    maxResults: 10,
+  });
+  return response.data.items;
+}
+
+async function spotifyToYoutube(selectedPlaylist) {
+  let tracks = await getSpotifyTracks(spotifyPlaylists, selectedPlaylist);
+  console.log("\nTracks:");
+  for (let i = 0; i < tracks.length; i++) {
+    if (tracks[i].track) {
+      const spotifyTrack = tracks[i].track
+      const youtubeTrack = await findTrack(spotifyTrack)
+      const title = spotifyTrack.name;
+      const artist = spotifyTrack.artists[0].name;
+      console.log(`  ${i}: Spotify - '${title}'`);
+      console.log(`  ${i}: Youtube - '${youtubeTrack.snippet.title}'\n`);
+    }
+  }
+}
 
 async function readString(str = "") {
   return new Promise((resolve) => {
